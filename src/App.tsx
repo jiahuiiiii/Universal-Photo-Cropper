@@ -27,13 +27,13 @@ const PhotoCropper: React.FC = () => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [imgState, setImgState] = useState<ImgState>({ x: 0, y: 0, scale: 1 });
 
-  // Ref-based state for dragging to prevent closure staleness
+  // Ref-based state for dragging and pinching to prevent closure staleness
   const dragRef = useRef({
     isDragging: false,
     startX: 0,
     startY: 0,
-    currentX: 0,
-    currentY: 0,
+    initialPinchDist: 0,
+    initialScale: 1,
   });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -92,7 +92,24 @@ const PhotoCropper: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Robust Window-based Dragging Logic
+  const handleZoom = (val: number) => {
+    const newScale = Math.max(0.01, Math.min(5, val));
+    const centerX = targetW / 2;
+    const centerY = targetH / 2;
+
+    setImgState((prev) => {
+      const mouseXInImg = (centerX - prev.x) / prev.scale;
+      const mouseYInImg = (centerY - prev.y) / prev.scale;
+      return {
+        ...prev,
+        scale: newScale,
+        x: centerX - mouseXInImg * newScale,
+        y: centerY - mouseYInImg * newScale,
+      };
+    });
+  };
+
+  // Robust Window-based Interaction Logic
   useEffect(() => {
     const handleMove = (clientX: number, clientY: number) => {
       if (!dragRef.current.isDragging || !containerRef.current) return;
@@ -108,9 +125,27 @@ const PhotoCropper: React.FC = () => {
     };
 
     const onMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+
     const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
+      if (!dragRef.current.isDragging || !containerRef.current) return;
+
+      // Handle movement if 2 fingers are used
+      if (e.touches.length === 2) {
+        if (e.cancelable) e.preventDefault();
+
+        // 1. Handle Panning (follows first finger)
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
+
+        // 2. Handle Pinch Zooming
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY,
+        );
+
+        if (dragRef.current.initialPinchDist > 0) {
+          const ratio = currentDist / dragRef.current.initialPinchDist;
+          handleZoom(dragRef.current.initialScale * ratio);
+        }
       }
     };
 
@@ -130,37 +165,32 @@ const PhotoCropper: React.FC = () => {
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onUp);
     };
-  }, [targetW]);
+  }, [targetW, targetH]); // Add targetH to deps for completeness
 
-  const handleStart = (clientX: number, clientY: number) => {
+  const handleStart = (
+    clientX: number,
+    clientY: number,
+    secondTouch?: { x: number; y: number },
+  ) => {
     if (!image || !containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
     const displayScale = targetW / rect.width;
 
+    const initialDist = secondTouch
+      ? Math.hypot(clientX - secondTouch.x, clientY - secondTouch.y)
+      : 0;
+
     dragRef.current = {
       isDragging: true,
       startX: (clientX - rect.left) * displayScale - imgState.x,
       startY: (clientY - rect.top) * displayScale - imgState.y,
+      initialPinchDist: initialDist,
+      initialScale: imgState.scale,
       currentX: imgState.x,
       currentY: imgState.y,
     };
     document.body.style.cursor = "grabbing";
-  };
-
-  const handleZoom = (val: number) => {
-    const newScale = val;
-    const centerX = targetW / 2;
-    const centerY = targetH / 2;
-    const mouseXInImg = (centerX - imgState.x) / imgState.scale;
-    const mouseYInImg = (centerY - imgState.y) / imgState.scale;
-
-    setImgState((prev) => ({
-      ...prev,
-      scale: newScale,
-      x: centerX - mouseXInImg * newScale,
-      y: centerY - mouseYInImg * newScale,
-    }));
   };
 
   const download = () => {
@@ -312,9 +342,15 @@ const PhotoCropper: React.FC = () => {
         <div
           ref={containerRef}
           onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
-          onTouchStart={(e) =>
-            handleStart(e.touches[0].clientX, e.touches[0].clientY)
-          }
+          onTouchStart={(e) => {
+            // Only initiate interaction if using 2 fingers
+            if (e.touches.length === 2) {
+              handleStart(e.touches[0].clientX, e.touches[0].clientY, {
+                x: e.touches[1].clientX,
+                y: e.touches[1].clientY,
+              });
+            }
+          }}
           className="relative bg-white shadow-xl border-4 border-white rounded-lg overflow-hidden touch-none"
           style={{
             width: "100%",
@@ -375,13 +411,13 @@ const PhotoCropper: React.FC = () => {
 
           <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-50">
             <div className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              <Move className="w-3 h-3 mr-2" /> Drag to Pan
+              <Move className="w-3 h-3 mr-2" /> 2-Finger Pan & Pinch
             </div>
             <div className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               <Maximize className="w-3 h-3 mr-2" /> {targetW}x{targetH} PX
             </div>
             <div className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              <Smartphone className="w-3 h-3 mr-2" /> Touch Ready
+              <Smartphone className="w-3 h-3 mr-2" /> Scroll Allowed
             </div>
           </div>
         </div>
