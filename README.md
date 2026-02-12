@@ -42,11 +42,13 @@ Official identification documents often require highly specific "chin-to-crown" 
 
 If you'd like to run this component in your own project:
 
-1. Clone the repository:  
-   git clone \[https://github.com/jiahuiiiii/Universal-Photo-Cropper.git\](https://github.com/jiahuiiiii/Universal-Photo-Cropper.git)
-
-2. Install dependencies:  
+1. Clone the repository:
+   ```
+   git clone https://github.com/jiahuiiiii/Universal-Photo-Cropper
+   ```
+3. Install dependencies:
+   ```
    npm install lucide-react
-
-3. Copy PhotoCropper.tsx into your components folder.
+   ```
+5. Copy PhotoCropper.tsx into your components folder.
 
