@@ -454,6 +454,9 @@ const PhotoCropper: React.FC = () => {
           </div>
         </div>
       </div>
+      <footer className="text-center py-4 bg-slate-100 text-slate-600 text-sm">
+        Developed by Jia Hui 🇲🇾 with 💗.
+      </footer>
     </div>
   );
 };
