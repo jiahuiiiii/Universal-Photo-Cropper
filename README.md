@@ -1,5 +1,7 @@
 # **Universal Photo Cropper**
 
+<img width="4000" height="2828" alt="Copy of Untitled (A4 (Landscape)) (1)" src="https://github.com/user-attachments/assets/648ab25b-a529-4d0f-9dc7-763920e05520" />
+
 A precision-engineered React & TypeScript tool designed to crop and validate official ID photographs (Passports, Visas, etc.) according to strict international specifications.
 
 ## **🚀 Overview**
